@@ -31,10 +31,9 @@ file_003=.
 file_004=.
 file_005=.
 file_006=.
-file_007=.
+file_007=Microchip
 file_008=.
 file_009=.
-file_010=Microchip
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -46,7 +45,6 @@ file_006=no
 file_007=no
 file_008=no
 file_009=no
-file_010=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -58,19 +56,17 @@ file_006=no
 file_007=no
 file_008=no
 file_009=no
-file_010=no
 [FILE_INFO]
 file_000=main.c
 file_001=macroutil.h
 file_002=oscilator.h
 file_003=adcutil.h
-file_004=sound.h
-file_005=pulsin.h
-file_006=pulsout.h
-file_007=motor.h
-file_008=uartutil.h
-file_009=rccontrol.h
-file_010=c:\program files (x86)\microchip\mplab c30\support\generic\h\libpic30.h
+file_004=pulsin.h
+file_005=motor.h
+file_006=uartutil.h
+file_007=c:\program files (x86)\microchip\mplab c30\support\generic\h\libpic30.h
+file_008=imu.h
+file_009=led.h
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=
