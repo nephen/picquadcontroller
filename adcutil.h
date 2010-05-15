@@ -1,10 +1,16 @@
 #ifndef ADCUTIL_H
 #define ADCUTIL_H
 
-
 //---------------------------------------------------------------------
 // ADC
 //---------------------------------------------------------------------
+
+#define ADC_VREF_MV 3300.0	//ADC reference volatage in miliVolts
+
+double adc_to_mv(double adc){
+	return adc * ADC_VREF_MV / 1023.0f;
+}
+
 
 //DMA Buffer is splited in segments each segments contains sample from one the channels , AN0..AN6
 //[AN0 SAMPLE 1,AN0 SAMPLE 2, ... ] ,  [AN1 SAMPLE 1,AN1 SAMPLE 2, ... ] , ...
@@ -96,14 +102,12 @@ void adc_init(){
 
 
 unsigned int (*adcDmaPtr)[DMA_SEG_COUNT][DMA_SEG_LEN]; 
-
-#define adcDma (*adcDmaPtr)		//convinient macro to access last updated buffer
-
-unsigned int adcDmaAge = 0;		//number of times interrupt was call since last succesful adc_new_data
+#define adcDma (*adcDmaPtr)				//convinient macro to access last updated buffer
+volatile unsigned int adcDmaAge = 0;	//number of times interrupt was call since last succesful adc_new_data
 
 void __attribute__((__interrupt__,no_auto_psv)) _DMA0Interrupt(void)
 {
-	_LAT(pinLed) = DMACS1bits.PPST0;	//for debug
+	//_LAT(pinLed) = DMACS1bits.PPST0;	//for debug
 
 	if(adcDmaAge<0xFFFF) adcDmaAge++;  		
 
@@ -118,6 +122,8 @@ void __attribute__((__interrupt__,no_auto_psv)) _DMA0Interrupt(void)
 
 
 double adcAvg[DMA_SEG_LEN]; 
+unsigned int adcMin[DMA_SEG_LEN]; 
+unsigned int adcMax[DMA_SEG_LEN]; 
 
 //if no new data, returns 0
 //if there's data, function returns interval in us since last succesful call to adc_new_data
@@ -127,11 +133,18 @@ unsigned long adc_new_data(){
 		interval_us = (unsigned long)adcDmaAge * DMA_INTERVAL_US;	//how much time passed since last succesful call to this function
 		adcDmaAge = 0;												//reset, will be incremented by DMA interupt
 
-		//compute average ADC values, in volts
+		//compute average ADC values
 		unsigned char i,j;
 		for(i=0;i<DMA_SEG_COUNT;i++){
 			adcAvg[i] = 0;
 			for(j=0;j<DMA_SEG_LEN;j++){
+				if(0==j){
+					adcMin[i]= adcDma[i][j];
+					adcMax[i]= adcDma[i][j];
+				}else{
+					if(adcDma[i][j]<adcMin[i]) adcMin[i]= adcDma[i][j];
+					if(adcDma[i][j]>adcMax[i]) adcMax[i]= adcDma[i][j];
+				}
 				adcAvg[i] += adcDma[i][j];				//use pointer to last updated buffer adcDmaA or adcDmaB, that is updated by DMA interrupt
 			}
 			adcAvg[i] /= DMA_SEG_LEN;
@@ -145,21 +158,23 @@ unsigned long adc_new_data(){
 //this is used for ADC debug
 void adc_debug_dump(){
 	unsigned char i,j;
-	printf("adcDMAptr=%u adcDmaAge= %u\n", (unsigned int)adcDmaPtr, adcDmaAge);
+	//printf("adcDMAptr=%u adcDmaAge= %u\n", (unsigned int)adcDmaPtr, adcDmaAge);
 	for(i=0;i<DMA_SEG_COUNT;i++){
 		printf("an%u A=",i);
 		for(j=0;j<DMA_SEG_LEN;j++){
 			printf("%04u ",adcDmaA[i][0]);
 		}
-		printf("\n");
+		printf(" adcAvg=%#6.1f (%#6.1f mV) \n",adcAvg[i],adc_to_mv(adcAvg[i]));
 		printf("an%u B=",i);
 		for(j=0;j<DMA_SEG_LEN;j++){
 			printf("%04u ",adcDmaB[i][0]);
 		}
-		printf(" adcAvg = %f \n",adcAvg[i]);
+		printf(" adcMin=%u adcMax=%u\n",adcMin[i],adcMax[i]);
 	};
 	printf("\n\n" );
 }
+
+
 
 
 #endif
