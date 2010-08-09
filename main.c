@@ -22,7 +22,8 @@
 //#define pinSound(f) 	f(B,9)		//Sound, PWM OUTPUT
 
 
-#define pinRX(f)  		f(B,7)		//RP7, UART RX, INPUT , IF CHANGED UPDATE uart_init()
+//#define pinRX(f)  		f(B,7)		//RP7, UART RX, INPUT , IF CHANGED UPDATE uart_init()
+
 #define pinTX(f)  		f(B,4)		//RP4, UART TX, OUTPUT, IF CHANGED UPDATE uart_init()
 
 #define pinPulsin0(f)  	f(B,15)	
@@ -33,6 +34,12 @@
 #define pinPulsin2CN	CNEN1bits.CN15IE
 #define pinPulsin3(f)  	f(B,9)
 #define pinPulsin3CN	CNEN2bits.CN21IE
+#define pinPulsin4(f)  	f(B,7)
+#define pinPulsin4CN	CNEN2bits.CN23IE
+#define pinPulsin5(f)  	f(A,4)
+#define pinPulsin5CN	CNEN1bits.CN0IE
+
+
 
 #define pinMotor0(f)  	f(B,14)	//Front Motor, PWM1H1
 #define pinMotor1(f)  	f(B,12)	//Back Motor, PWM1H2
@@ -81,23 +88,7 @@ int main (void)
 	uart_init();
 	printf("\n*** PicQuadController ***\n");
 
-	//---------------------------------------------------------------------
-	// ADC TEST
-	//---------------------------------------------------------------------
-	/*
-	while(1){
-		__delay_ms(1001);
-		//_LAT(pinLed) = !_LAT(pinLed);
 
-		unsigned long interval_us = adc_new_data();
-
-		if(interval_us){
-			printf("interval_us = %lu\n" , interval_us);
-			adc_debug_dump();		
-		}
-
-	}
-	*/
 
 	//---------------------------------------------------------------------
 	// PULSIN
@@ -107,6 +98,8 @@ int main (void)
 	PULSIN_ASSIGN_PIN(1,pinPulsin1,pinPulsin1CN);
 	PULSIN_ASSIGN_PIN(2,pinPulsin2,pinPulsin2CN);
 	PULSIN_ASSIGN_PIN(3,pinPulsin3,pinPulsin3CN);
+	PULSIN_ASSIGN_PIN(4,pinPulsin4,pinPulsin4CN);
+	PULSIN_ASSIGN_PIN(5,pinPulsin5,pinPulsin5CN);
 
 	//---------------------------------------------------------------------
 	// MOTOR
@@ -114,38 +107,9 @@ int main (void)
 	motor_init();
 
 	//---------------------------------------------------------------------
-	// MOTOR & PULSIN TEST
-	//---------------------------------------------------------------------
-	/*
-	while(1){
-		__delay_ms(100);
-
-		pulsin_process();
-		led(PULSIN_PANIC ? BLINK_FAST : LED_ON);
-	
-
-		printf("*PLS %05d %05d %05d %05d\n" , TK2_TO_US(pulsinPulse[0]),TK2_TO_US(pulsinPulse[1]),TK2_TO_US(pulsinPulse[2]),TK2_TO_US(pulsinPulse[3]));
-		printf(" CMD  %04d  %04d  %04d  %04d FLT:%05d\n",cmd[ROL],cmd[PTC],cmd[THR],cmd[YAW], pulsinFaultCount );
-
-
-		int i;
-		for(i = 0 ; i<4 ; i ++){
-			motorDuty[i] = MAX(cmd[THR],0);
-		}
-		motor_update_duty();
-
-
-	}
-	*/
-	
-
-
-	//---------------------------------------------------------------------
 	// IMU
 	//---------------------------------------------------------------------
 	imu_init();
-
-
 
 	//---------------------------------------------------------------------
 	// MAIN LOOP
@@ -153,44 +117,72 @@ int main (void)
 
 	led(LED_ON);
 
+	#define MAX_DELTA	10.0				//maximum delta in duty of any motor and throtle
+	#define MAX_THR  (100.0-MAX_DELTA*2)	//maximum allowed throtle 
+	float motorDutyNew[4] = {0,0,0,0};		//new duty cycles for motors
+	float deltaRoll,deltaPitch, deltaYaw;
+	float Kp_RollPitch,Kp_Yaw;				//proportional feedback coeficients (adjustable via ch5/6 on transmitter)
+	
+
 	while (1){
-		//unsigned char i;
 		unsigned long interval_us = adc_new_data();
 
 		pulsin_process();
 		led(PULSIN_PANIC ? BLINK_FAST : LED_ON);
-	
-		if(interval_us){
-			//adc_debug_dump();
 
+
+		float throtle = MIN(MAX_THR,cmd[THR]);
+		//float deltaMax = MIN(MAX_DELTA,throtle/2);
+
+
+		if(interval_us > 0 ){
+			//we have fresh adc samples
 			getEstimatedInclination(interval_us);
 
-			double target =  0.3 * cmd[PTC] / 100.0;
-			double error = RwEst[0] - target;
-			double delta = 30 * error;
-			int maxDuty = MAX(cmd[THR],0);
+			//MAX_PROP ~=MAX_DELTA / MAX_MEASURED = 10 / 0.3 deg/ms = 33
+			Kp_Yaw = map_to_range(cmd[VRA],0.0,100.0, 0.0, 33.0);
+			//MAX_PROP ~=MAX_DELTA / MAX_MEASURED = 10 / 0.3 = 33;
+			Kp_RollPitch = map_to_range(cmd[VRA],0.0,100.0, 0.0, 33.0);
 
-			int minDuty = maxDuty - (int)(fabs(delta)+0.5);
-			minDuty = MAX(0,minDuty);
+			float measuredYaw = put_in_range(getGyroOutput(2),-0.3,0.3);  // -0.3 ... 0.3 deg / ms	//CCW rotation <=> rateYaw >0
+			deltaYaw = measuredYaw * Kp_Yaw; 
 
-			if(delta > 0 ){
-				motorDuty[0] = maxDuty;
-				motorDuty[1] = minDuty;
-			}else{
-				motorDuty[1] = maxDuty;
-				motorDuty[0] = minDuty;
+			float measuredPitch = put_in_range(RwEst[0],-0.3,0.3);
+			deltaPitch = measuredPitch * Kp_RollPitch; 
+
+			float measuredRoll = put_in_range(RwEst[1],-0.3,0.3);
+			deltaRoll = measuredRoll * Kp_RollPitch; 
+			
+			motorDutyNew[0]	= throtle + deltaYaw + deltaPitch;		//FRONT
+			motorDutyNew[1]	= throtle + deltaYaw - deltaPitch;		//BACK
+			motorDutyNew[2]	= throtle - deltaYaw + deltaRoll;		//LEFT
+			motorDutyNew[3]	= throtle - deltaYaw - deltaRoll;		//RIGHT
+
+			if(0 == sequence % 8){
+				//send debug data every few cycles
+				//SerialChart file: PicQuadController_DEBUG1.scc
+				hdlc_send_word(interval_us);
+				hdlc_send_float(motorDutyNew[0]);
+				hdlc_send_float(motorDutyNew[1]);
+				hdlc_send_float(motorDutyNew[2]);
+				hdlc_send_float(motorDutyNew[3]);
+				hdlc_send_sep();
 			}
 
-			printf("%lu,%d,%d,%.3f,%.3f,%.3f,%d,%d\n" , interval_us,cmd[THR],cmd[PTC],RwAcc[0],RwEst[0],error,motorDuty[0],motorDuty[1]);
-			//for(i=0;i<3;i++) printf("%#8.3f,",RwAcc[i]);
-			//for(i=0;i<3;i++) printf("%#8.3f,",RwEst[i]);
+			motorDuty[0] = float_to_int(put_in_range(motorDutyNew[0],0,100));
+			motorDuty[1] = float_to_int(put_in_range(motorDutyNew[1],0,100));
+			motorDuty[2] = float_to_int(put_in_range(motorDutyNew[2],0,100));
+			motorDuty[3] = float_to_int(put_in_range(motorDutyNew[3],0,100));
+			
 
+		}
+		
 
-			motor_update_duty();
-
-
-		}	
+		
+		motor_update_duty();
+		
 	};
+
 
 
 	return 0;

@@ -45,4 +45,12 @@ int float_to_int(float v){
 		return (int)(v - 0.5f);
 }
 
+float fsign(float v){
+	if(v>=0) return 1; else return -1;
+}
+
+float low_pass_filter(float vNew,float vPrev,float factor){
+	return (vPrev*factor + vNew) / ( 1 + factor);
+}
+
 #endif

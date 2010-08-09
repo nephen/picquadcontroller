@@ -89,7 +89,7 @@ void gyro_calibrate(){
 					printf("Gyro calibration FAULT\n  Loop:%d Axis:%d adcMin:%d adcMax:%d \n", 
 						counter,w, gyro[w].calibAdcMin , gyro[w].calibAdcMax 
 					);
-					adc_debug_dump();
+					adc_debug_dump1();
 
 				}
 			}
@@ -162,6 +162,8 @@ double RwGyro[3];       //Rw obtained from last estimated value and gyro movemen
 double Awz[2];          //angles between projection of R on XZ/YZ plane and Z axis (deg)
 
 
+double gyroOut[3];
+
 //-------------------------------------------------------------------
 // getEstimatedInclination
 //-------------------------------------------------------------------
@@ -174,7 +176,9 @@ void getEstimatedInclination(unsigned int interval_us){
 	//get accelerometer readings in g, gives us RwAcc vector
 	for(w=0;w<=2;w++){ 
 		RwAcc[w] = getAcclOutput(w);
+		gyroOut[w] = getGyroOutput(w); 	//gyro rate in deg/ms
 		if(firstLoop) RwEst[w] = RwAcc[w];
+
 	}
   
   	//normalize vector (convert to a vector with same direction and with length 1)
@@ -190,12 +194,9 @@ void getEstimatedInclination(unsigned int interval_us){
 			
 
 			//get angles between projection of R on ZX/ZY plane and Z axis, based on last RwEst
-
-			//info.debug[2] = FLOAT2INT(atan2_aprox(0.100,0.300)*1000);		
-
 			for(w=0;w<=1;w++){
 				Awz[w] = atan2(RwEst[w],RwEst[2]);  //get angle in radians
-				tmpf = getGyroOutput(w);	        //get current gyro rate in deg/ms, default to 0 
+				tmpf = gyroOut[w];	        		//get current gyro rate in deg/ms
 
 				tmpf /= 1000.0f;					//convert to deg/us				
 				tmpf *= interval_us;	            //get angle change in degrees
@@ -205,7 +206,8 @@ void getEstimatedInclination(unsigned int interval_us){
 
 			}
 			
-			//reverse calculation of RwGyro from Awz angles, for formulas deductions see  http://starlino.com/imu_guide.html
+			//reverse calculation of RwGyro from Awz angles
+			//for formulae deduction see  http://starlino.com/imu_guide.html
 			for(w=0;w<=1;w++){
 				tmpf = squared(cos(Awz[w]));
 				tmpf *= squared(tan(Awz[1-w]));
@@ -241,7 +243,7 @@ void getEstimatedInclination(unsigned int interval_us){
 		//RUN THIS TEST AND MONITOR RwAcc and RwEst
 		/*
 		for(w=0;w<=2;w++){
-			if( info.sequence  % 255){
+			if( sequence  % 255){
 				RwEst[w] = RwGyro[w];
 			}else{
 				//reset to acc readings 
@@ -250,7 +252,6 @@ void getEstimatedInclination(unsigned int interval_us){
 
 		}
 		*/
-		
 	}
   
 	firstLoop = 0;
