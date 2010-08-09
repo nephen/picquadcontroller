@@ -11,7 +11,7 @@
 #define MOTOR_DUTY(percent) 	(P1DC1 = (2UL*P1TPER+2)*percent/100)	//(100% <=> P1TPER*2 since duty cycle resolution is Tcy/2)
 #define MOTOR2_DUTY(percent) 	(P1DC2 = (2UL*P1TPER+2)*percent/100)	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70187C.pdf  pg.33
 
-int motorDuty[4] = {0,0,0,0};
+int motorDuty[4] = {0,0,0,0};	//FRONT,BACK,LEFT,RIGHT
 void motor_update_duty(){
 	//(100% <=> P1TPER*2 since duty cycle resolution is Tcy/2)	
 	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70187C.pdf  pg.33
@@ -39,9 +39,14 @@ void motor_init(){
 	PWM1CON1bits.PMOD1 = 0; 	//PWM1Ly,PWM1Hy are in independent running mode
 	PWM1CON1bits.PEN1L = 0; 	//PWM1L1 NORMAL I/O
 	PWM1CON1bits.PEN1H = 1; 	//PWM1H1 PWM OUTPUT
-	PWM1CON1bits.PMOD1 = 0; 	//PWM2Ly,PWM2Hy are in independent running mode
+	PWM1CON1bits.PMOD2 = 0; 	//PWM2Ly,PWM2Hy are in independent running mode
 	PWM1CON1bits.PEN2L = 0; 	//PWM1L2 NORMAL I/O
 	PWM1CON1bits.PEN2H = 1; 	//PWM1H2 PWM OUTPUT
+	PWM1CON1bits.PMOD3 = 0; 	//PWM3Ly,PWM2Hy are in independent running mode
+	PWM1CON1bits.PEN3L = 0; 	//PWM1L3 NORMAL I/O
+	PWM1CON1bits.PEN3H = 1; 	//PWM1H3 PWM OUTPUT
+	
+
 	//PWM2, MOTOR 3
 	PWM2CON1 = 0;				//clear all bits (use defaults)
 	PWM2CON1bits.PMOD1 = 0; 	//PWM2Ly,PWM2Hy are in independent running mode

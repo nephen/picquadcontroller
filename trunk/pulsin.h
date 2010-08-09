@@ -5,7 +5,7 @@
 // PULSIN (USING CN interrupts, Timer2)
 //---------------------------------------------------------------------
 
-#define PULSIN_LEN	4						// number of pulsin pins
+#define PULSIN_LEN	6						// number of pulsin pins
 
 #define US_TO_TK2(tk) ((tk)*5)				// us to Timer2 ticks /  Timer2 5 ticks = 1us (40Mhz FCY, 1:8 prescaler)
 #define TK2_TO_US(tk) (((tk)+2)/5)			// Timer2 ticks to us
@@ -13,18 +13,19 @@
 
 #define PULSIN_MAX_NOCHANGE_US	40000UL		// Maximum time of no changed allowed (should be at least 20ms for most transmiters)
 
-#define PULSIN_SMOOTHING 10				//Smooth factor of pulsin values, protects against glitches and sharp movements		
-
 
 #define PULSIN_VALID_MIN_US	800				// Min valid received pulse length in us
 #define PULSIN_VALID_MAX_US	2200			// Max valid received pulse length in us
 
 
-int cmd[PULSIN_LEN];	//Commands converted and validated by pulsin_process()
+char cmd[PULSIN_LEN];	//Commands converted and validated by pulsin_process()
 #define ROL	0			//Roll (rotation in YZ plane,around X axis) 	cmd[ROL] = -100 .. 100
 #define PTC	1			//Pitch (rotation in XZ plane,around Y axis) 	cmd[PTC] = -100 .. 100
 #define THR	2			//Throtle (motor speed)			cmd[THR] = 0 .. 100
 #define YAW	3			//Yaw (rotation around Z axis)	cmd[YAW] = -100 .. 100
+#define VRA 4			//VR(A) DIAL
+#define VRB 5			//VR(B) DIAL
+
 
 
 #define RANGE_MIN 0
@@ -40,11 +41,14 @@ int cmd[PULSIN_LEN];	//Commands converted and validated by pulsin_process()
 //pulsinUs[] are maped to cmd[] according to following map 
 //Please note there's a "mid" zone, where cmd=0 if pulse in range of cmdMap[MID_MIN] .. cmdMap[MID_MAX]
 // Mode 2 Transmitter, CH1 - NORM, CH2 - REV, CH3 - REV, CH4 - REV
-int cmdMap[4][7] = {
-	{1100,1900,  1475,1525,  -100,100,0},		//CH1 ROL
-	{1100,1900,  1475,1525,  -100,100,0},		//CH2 PTC
-	{1100,1900,  1100,1200,  0,100,0},			//CH3 THR
-	{1100,1900,  1475,1525,  -100,100,0}		//CH4 YAW
+int cmdMap[PULSIN_LEN][7] = {
+	//RANGE_MIN,RANGE_MAX, MID_MIN,MID_MAX, CMD_MIN,CMD_MAX,CMD_MID , MODE 2 6-CH TRANSMITTER
+	{1100,1900,  1475,1525,  -100,100,0},		//CH1 ROL	RIGH STICK HORIZONTAL
+	{1100,1900,  1475,1525,  -100,100,0},		//CH2 PTC	RIGH STICK VERTICAL
+	{1100,1900,  1100,1200,  0,100,0},			//CH3 THR	LEFT STICK VERTICAL
+	{1100,1900,  1475,1525,  -100,100,0},		//CH4 YAW	LEFT STICK HORIZONTAL
+	{1100,1900,  1100,1200,  0,100,0},			//CH5 VR(A)	
+	{1100,1900,  1100,1200,  0,100,0}			//CH6 VR(B)
 };
 
 
@@ -78,13 +82,14 @@ void pulsin_init(){
 	}
 
 	//Configure Timer2 5ticks = 1us (40Mhz FCY, 1:8 prescaler)
-	ConfigIntTimer2(T2_INT_ON & T2_INT_PRIOR_3);
+	ConfigIntTimer2(T2_INT_ON & T2_INT_PRIOR_5);
  	OpenTimer2(T2_ON & T2_GATE_OFF & T2_IDLE_STOP &
                T2_PS_1_8 & 
                T2_SOURCE_INT, 0xFFFF
 	);
 
 	IFS1bits.CNIF = 0;		//Reset CN interrupt
+	IPC4bits.CNIP = 4;		//Change Notification Interrupt priority
 	IEC1bits.CNIE = 1;		//Enable CN interrupts
 }
 
@@ -126,9 +131,18 @@ void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void){
 	for(i=0;i<PULSIN_LEN;i++){
 		pulsinOverflows[i]++;
 		if( (unsigned long)TK2_OVERFLOW_US * pulsinOverflows[i] > PULSIN_MAX_NOCHANGE_US ){
-			pulsinPulse[i] = 5;
+			pulsinPulse[i] = 0;
 		}
 	}
+	
+	//SAFETY FEATURE SLOWLY SHUT DOWN THROTTLE
+	static unsigned char itteration;
+	if(PULSIN_PANIC){
+		itteration++;
+		if(0 == itteration % 4 && cmd[THR] > 0) // every 256*256 / 5 ~ 13107us * 4 ~ 52ms
+			cmd[THR]--;
+	}
+
     IFS0bits.T2IF = 0;    // Clear Timer interrupt flag
 }  
 
@@ -137,7 +151,7 @@ void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void){
 void __attribute__ ((__interrupt__, auto_psv)) _CNInterrupt(void)
 {
 	static unsigned char i; 
-	static unsigned int tmp;
+
 						
 	IFS1bits.CNIF = 0; 	// Clear CNIF flag right away, 
 						// This gives us the oportunity to catch another CN change while this interrupt executes.
@@ -155,14 +169,7 @@ void __attribute__ ((__interrupt__, auto_psv)) _CNInterrupt(void)
 				if(1 == pulsinOn[i]){
 					//note that it's ok if ReadTimer2() < pulsinTimer[i], overflow works correctly here
 					//as long as timer2 period is 0xFFFF
-					if(pulsinOverflows[i]<2){
-						tmp = ReadTimer2() - pulsinTimer[i];	  
-						if(pulsinPulse[i] > 0 ){
-							pulsinPulse[i] = ( (unsigned long)PULSIN_SMOOTHING * pulsinPulse[i] + tmp )/(1 + PULSIN_SMOOTHING);   	
-						}else{
-							pulsinPulse[i] = tmp;
-						}
-					}
+					if(pulsinOverflows[i]<2) pulsinPulse[i] = ReadTimer2() - pulsinTimer[i];	  
 					pulsinOn[i] = 0;		
 					pulsinOverflows[i] = 0;
 				}

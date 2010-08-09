@@ -16,14 +16,14 @@ double adc_to_mv(double adc){
 //[AN0 SAMPLE 1,AN0 SAMPLE 2, ... ] ,  [AN1 SAMPLE 1,AN1 SAMPLE 2, ... ] , ...
 
 #define DMA_SEG_COUNT 6		//Number of segments in DMA buffer (one for each channel)
-#define DMA_SEG_LEN	  8		//Lenght of each segments in words (number of samples per channel, stored in DMA buffer at one time)
-#define DMA_TOTAL_LEN (DMA_SEG_COUNT*DMA_SEG_LEN)	//=48 Total length of DMA buffer
+#define DMA_SEG_LEN	  16	//Lenght of each segments in words (number of samples per channel, stored in DMA buffer at one time)
+#define DMA_TOTAL_LEN (DMA_SEG_COUNT*DMA_SEG_LEN)	//=96 Total length of DMA buffer
 
-unsigned int adcDmaA[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),aligned(128)));	//IMPORTANT: align data to a power of 2 >= DMA_TOTAL_LEN*2 
-unsigned int adcDmaB[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),aligned(128)));	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70182b.pdf, page 22-31
+unsigned int adcDmaA[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),aligned(256)));	//IMPORTANT: align data to a power of 2 >= DMA_TOTAL_LEN*2 
+unsigned int adcDmaB[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),aligned(256)));	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70182b.pdf, page 22-31
 
 
-#if 128 <  DMA_TOTAL_LEN * 2
+#if 256 <  DMA_TOTAL_LEN * 2
 	#error "Update aligned(..) above"; //memo if DMA_TOTAL_LEN changes
 #endif
 
@@ -58,16 +58,16 @@ void adc_init(){
 	AD1CON3bits.SAMC = SAMC_PARAM;	//sample time =  SAMC<4:0> * Tad  =  30 * 1.5uS = 45 uS  
 									//Total sample+conversion time per chanel = 12(conversion) + 30(sample) = 42Tad * 1.5us = 63uS 
 
-	#define DMA_INTERVAL_US  (63 * DMA_TOTAL_LEN) 	// = 63 * 48 = 3024 us , this should be integer, otherwise use conversion to integer
+	#define DMA_INTERVAL_US  (63 * DMA_TOTAL_LEN) 	// = 63 * 96 = 6048 us , this should be integer, otherwise use conversion to integer
 
-	#if ADCS_PARAM != 60 -1 || SAMC_PARAM != 30 || DMA_SEG_COUNT != 6 || DMA_SEG_LEN !=8
+	#if ADCS_PARAM != 60 -1 || SAMC_PARAM != 30 || DMA_SEG_COUNT != 6 || DMA_SEG_LEN !=16
 		#error "Update DMA_INTERVAL_US above"
 	#endif
 
 	
-	AD1CON4bits.DMABL=0b011;//DMA buffer has 2^DMABL = 8 words per channel (per segment), 
+	AD1CON4bits.DMABL=0b100;//DMA buffer has 2^DMABL = 16 words per channel (per segment), 
 							
-	#if 8 != DMA_SEG_LEN
+	#if 16 != DMA_SEG_LEN
 		#error "Update AD1CON4 above"; //memo if DMA_SEG_LEN changes
 	#endif
 
@@ -122,14 +122,17 @@ void __attribute__((__interrupt__,no_auto_psv)) _DMA0Interrupt(void)
 
 
 double adcAvg[DMA_SEG_LEN]; 
+#define ADC_AVG_LONG_LEN	16
+double adcAvgLong[DMA_SEG_LEN]; 	//average over ADC_AVG_LONG_LEN calls to adc_new_data
 unsigned int adcMin[DMA_SEG_LEN]; 
 unsigned int adcMax[DMA_SEG_LEN]; 
+char adc_new_data_first = 1;
 
-//if no new data, returns 0
+//if no new data, returns 0, "new data" is determined by ADC_DMA_AGE_NEW
 //if there's data, function returns interval in us since last succesful call to adc_new_data
 unsigned long adc_new_data(){
 	unsigned long interval_us = 0;
-	if(adcDmaAge > 0){
+	if(adcDmaAge >= 1){
 		interval_us = (unsigned long)adcDmaAge * DMA_INTERVAL_US;	//how much time passed since last succesful call to this function
 		adcDmaAge = 0;												//reset, will be incremented by DMA interupt
 
@@ -148,15 +151,21 @@ unsigned long adc_new_data(){
 				adcAvg[i] += adcDma[i][j];				//use pointer to last updated buffer adcDmaA or adcDmaB, that is updated by DMA interrupt
 			}
 			adcAvg[i] /= DMA_SEG_LEN;
+			if(adc_new_data_first)
+ 				adcAvgLong[i] = adcAvg[i];
+			else
+ 				adcAvgLong[i] = low_pass_filter(adcAvg[i],adcAvgLong[i],ADC_AVG_LONG_LEN);
 		};		
 	}
+
+	adc_new_data_first = 0;
 
 	return interval_us;
 }
 
 
 //this is used for ADC debug
-void adc_debug_dump(){
+void adc_debug_dump1(){
 	unsigned char i,j;
 	//printf("adcDMAptr=%u adcDmaAge= %u\n", (unsigned int)adcDmaPtr, adcDmaAge);
 	for(i=0;i<DMA_SEG_COUNT;i++){
@@ -169,11 +178,20 @@ void adc_debug_dump(){
 		for(j=0;j<DMA_SEG_LEN;j++){
 			printf("%04u ",adcDmaB[i][0]);
 		}
-		printf(" adcMin=%u adcMax=%u\n",adcMin[i],adcMax[i]);
+		printf(" adcMin=%u adcMax=%u dif=%u\n",adcMin[i],adcMax[i],adcMax[i]-adcMin[i]);
 	};
 	printf("\n\n" );
 }
 
+//this is used for ADC debug, for analysis in SerialChart
+void adc_debug_dump2(){
+	unsigned char i;
+	for(i=0;i<DMA_SEG_COUNT;i++){
+		printf("%.1f,%d,",adcAvgLong[i],adcMax[i]-adcMin[i]);
+	};
+	printf("\n");
+
+}
 
 
 

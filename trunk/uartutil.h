@@ -4,6 +4,7 @@
 // UART
 //---------------------------------------------------------------------
 
+
 void uart_init(){
 	//dsPIC33FJ* does not have dedicated ports for UART, we need to assign the pin's we're going to use
 
@@ -15,7 +16,7 @@ void uart_init(){
 
 	__builtin_write_OSCCONL(OSCCON & ~(1<<6));		//unlock registers
 	RPOR2bits.RP4R = 0b00011;	//U1TX = RP4
-	RPINR18bits.U1RXR = 7;   	//U1RX = RP7 
+	//RPINR18bits.U1RXR = 7;   	//U1RX = RP7 
 	__builtin_write_OSCCONL(OSCCON | (1<<6));		//lock registers
 
 
@@ -38,43 +39,38 @@ void uart_send_char(char c){
 }
 
 
-#define PACKET_LEN 7 
-unsigned char receiveBuffer[255];
-unsigned char receiveBufferPos=0;
+//HDLC encoding http://www.tinyos.net/tinyos-2.x/doc/html/tep113.html#hdlc
+#define HDLC_ESC	0x7D	//escape char	
+#define HDLC_SEP	0x7E	//packet separator char
+#define HDLC_XOR	0x20	//xor char
 
 
-
-
-int uart_read_packet(){
-	// must clear the overrun error to keep uart receiving 
-	if(U1STAbits.OERR == 1)
-	{
-		U1STAbits.OERR = 0;
-		receiveBufferPos = 0;
-		return -1;
-	}
-	// check for receive errors 
-	if(U1STAbits.FERR == 1)
-	{
-		U1STAbits.FERR = 0;
-		receiveBufferPos = 0;
-		return -1;
-	}
-	
-	while(DataRdyUART1()){
-		unsigned char receiveByte = U1RXREG;
-		if(255 == receiveByte){
-			unsigned char pos = receiveBufferPos;
-			receiveBufferPos = 0;
-			if(pos >= PACKET_LEN) return pos-PACKET_LEN;
-		}else{
-			receiveBuffer[receiveBufferPos] = receiveByte;
-			receiveBufferPos++;
-		}
-	}
-
-	return -1;
+void hdlc_send_sep(){
+	uart_send_char(HDLC_SEP);
 }
 
+void hdlc_send_byte(unsigned char c ){
+	if(HDLC_SEP == c || HDLC_ESC == c){
+		uart_send_char(HDLC_ESC);
+		uart_send_char(c ^ HDLC_XOR);
+	}else{
+		uart_send_char(c);
+	}
+}
+
+void hdlc_send_word(unsigned int w){
+	//send Most Significat Byte First
+	hdlc_send_byte(w >> 8 );
+	hdlc_send_byte(w & 0xFF);
+}
+
+
+void hdlc_send_float(float f){
+	unsigned char* p = (unsigned char*)(&f);
+	hdlc_send_byte(*p);p++;
+	hdlc_send_byte(*p);p++;
+	hdlc_send_byte(*p);p++;
+	hdlc_send_byte(*p);
+}
 
 #endif
