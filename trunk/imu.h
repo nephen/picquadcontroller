@@ -1,6 +1,30 @@
 #ifndef IMU__H
 #define IMU__H
 
+/*
+How to use this module in other projects.
+
+Input variables are: 
+	adcAvg[0..5]  ADC readings of 3 axis accelerometer and 2 axis gyroscope they are calculated in the background by adcutil.h
+	interval_us - interval in microseconds since last call to getEstimatedInclination
+
+Output variables are:
+	RwEst[0..2] which ar ethe direction cosine of the estimated inclination of the device
+
+First you must initialize the module with: 
+	imu_init();
+
+Then call periodically every 5-20ms:
+	getEstimatedInclination(interval_us);
+	it is assumed that you also update periodicall they adcAvg[0..5] array 
+
+For more info see:
+	http://www.starlino.com/imu_guide.html
+	http://www.starlino.com/imu_kalman_arduino.html
+
+*/
+
+
 // NOTE: If your gyros fail to calibrate on startup
 // Make sure device is idle on startup.
 // Check gyro's config.zeroLevel values (not only in datasheet but in reality ! measure with a multimeter).
@@ -11,7 +35,12 @@ unsigned int sequence;  			//estimation sequence
 unsigned int interval;				//interval since last estimation in us 
 unsigned char firstLoop = 1;		//marks first estimation
 
-#define IMU_SMOOTHING 20			//this influences smoothing of estimates and gyro weight in accelerometer-gyro fusion
+#define ACC_WEIGHT_MAX 0.02			//maximum accelerometer weight in accelerometer-gyro fusion formula (see bellow in the getEstimatedInclination )
+									//this value is tuned-up experimentally: if you get too much noise - decrease it
+									//if you get a delayed response of the filtered values - increase it
+									//starting with a value of  0.01 .. 0.05 will work for most sensors
+
+#define ACC_ERR_MAX  0.3			//maximum allowable error(external acceleration) where accWeight becomes 0
 
 #define GYRO_CALIBRATE_LOOPS 500	//determines how long the gyro will be hold in calibration sequence
 
@@ -20,7 +49,7 @@ struct{
 	unsigned char invert;			// invert accl input (for example due to physical mounting position)
 	unsigned int sensitivity;		// accl input sensitivity in mv/g
 	unsigned int zeroG_mv;			// accl output at 0g
-} accl[3];					
+} accl[3];		
 
 struct{
 	unsigned char invert;			// invert gyro input (for example due to physical mounting position)
@@ -34,6 +63,7 @@ struct{
 
 
 void gyro_calibrate();
+
 
 void imu_init(){
 	unsigned char w;
@@ -90,10 +120,8 @@ void gyro_calibrate(){
 						counter,w, gyro[w].calibAdcMin , gyro[w].calibAdcMax 
 					);
 					adc_debug_dump1();
-
 				}
 			}
-	 
 
 			if(!fault)
 				counter++;
@@ -136,16 +164,25 @@ float getGyroOutput(unsigned char w){
 	return tmpf;		
 }
 
-void normalize3DVector(double* vector){
+
+//Get modulus of the vector sqrt(x^2+y^2+y^2)
+double modulus3DVector(double* vector){
 	static double R;  
 	R = vector[0]*vector[0];
 	R += vector[1]*vector[1];
 	R += vector[2]*vector[2];
-	R = sqrt(R);
+	return sqrt(R);
+}
+
+//Convert vector to a vector with same direction and modulus 1
+void normalize3DVector(double* vector){
+	static double R;  
+	R = modulus3DVector(vector);
 	vector[0] /= R;
 	vector[1] /= R;  
 	vector[2] /= R;  
 }
+
 
 
 //-------------------------------------------------------------------
@@ -161,6 +198,11 @@ double RwAcc[3];        //projection of normalized gravitation force vector on x
 double RwGyro[3];       //Rw obtained from last estimated value and gyro movement
 double Awz[2];          //angles between projection of R on XZ/YZ plane and Z axis (deg)
 
+double RwDebug[3];   	//used for debug
+
+double accErr;			//abs ( modulus of Accelerometer vector  - 1 )
+
+double accWeight;		//actual accelerometer weight , computed based on accErr 
 
 double gyroOut[3];
 
@@ -180,8 +222,14 @@ void getEstimatedInclination(unsigned int interval_us){
 		if(firstLoop) RwEst[w] = RwAcc[w];
 
 	}
-  
-  	//normalize vector (convert to a vector with same direction and with length 1)
+
+	//If there are no external accelerations the modulus of RwAcc vector must be 1g 
+	//The quality of acceleration data for the purpose of inclination calculation depends a lot on the absence of external accelerations.
+	//Calculate the error accErr as follows:
+	
+	accErr = fabs(1 - modulus3DVector(RwAcc));
+	
+   	//normalize vector (convert to a vector with same direction and with length 1)
   	normalize3DVector(RwAcc);
   
 	if(!firstLoop){
@@ -191,8 +239,7 @@ void getEstimatedInclination(unsigned int interval_us){
 			//in this case skip the gyro data and just use previous estimate
 			for(w=0;w<=2;w++) RwGyro[w] = RwEst[w];
 		}else{
-			
-
+	
 			//get angles between projection of R on ZX/ZY plane and Z axis, based on last RwEst
 			for(w=0;w<=1;w++){
 				Awz[w] = atan2(RwEst[w],RwEst[2]);  //get angle in radians
@@ -227,13 +274,15 @@ void getEstimatedInclination(unsigned int interval_us){
 
 
 		}
+
+		accWeight = ACC_WEIGHT_MAX - map_to_range(accErr, 0 , ACC_ERR_MAX , 0 , ACC_WEIGHT_MAX );
 		
 		//New estimate is weighted average of (Current Accelerometer) and (Last Estimated + Current Gyro) 
 		for(w=0;w<=2;w++){
-			RwEst[w] =  IMU_SMOOTHING; 
-			RwEst[w] *= RwGyro[w];
-			RwEst[w] += RwAcc[w];
-			RwEst[w] /= (float)(1 + IMU_SMOOTHING);
+			RwEst[w] =  accWeight; 
+			RwEst[w] *= RwAcc[w];
+			RwEst[w] += RwGyro[w];
+			RwEst[w] /= (float)(1 + accWeight);
 		}
 
 		normalize3DVector(RwEst);   

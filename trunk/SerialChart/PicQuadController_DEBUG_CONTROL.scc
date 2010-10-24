@@ -23,23 +23,17 @@ grid_v_origin_color = transparent
 
 
 [_default_]
-min=0
+min=-100
 max=100
 color=transparent
 format = %d
-type = byte
+type = sbyte
 
-[X]
-
-[motorFront]
+[controlPitch]
 color=red
 
-[motorBack]
+[controlRoll]
 color=orange
 
-[motorLeft]
+[controlYaw]
 color=green
-
-[motorRight]
-color=blue
-
