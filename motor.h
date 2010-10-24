@@ -12,7 +12,12 @@
 #define MOTOR2_DUTY(percent) 	(P1DC2 = (2UL*P1TPER+2)*percent/100)	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70187C.pdf  pg.33
 
 int motorDuty[4] = {0,0,0,0};	//FRONT,BACK,LEFT,RIGHT
-void motor_update_duty(){
+
+void motor_set_duty(unsigned char i,float duty){
+	motorDuty[i] = float_to_int(put_in_range(duty,0,100));
+}
+
+void motor_apply_duty(){
 	//(100% <=> P1TPER*2 since duty cycle resolution is Tcy/2)	
 	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70187C.pdf  pg.33
 	P1DC1 = (2UL*P1TPER+2)*motorDuty[0]/100;
@@ -71,7 +76,7 @@ void motor_init(){
 	P2TPER = (FCY  / 64 / MOTOR_PWM_FREQ) - 1;	
 
 	//update duty cycle 
-	motor_update_duty();	
+	motor_apply_duty();	
 	
 	//ENABLE PWM
 	//PWM1, MOTORS 0,1,2

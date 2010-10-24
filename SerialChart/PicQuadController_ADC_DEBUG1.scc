@@ -1,0 +1,44 @@
+[_setup_]
+port=\\.\COM17
+baudrate=115200
+
+width=500
+height=401
+background_color = white
+
+grid_h_origin = 200
+grid_h_step = 10
+grid_h_color = #EEE
+grid_h_origin_color = #CCC
+
+grid_v_origin = 0
+grid_v_step = 10
+grid_v_color = #EEE
+grid_v_origin_color = transparent
+
+
+[_default_]
+min=-0.5
+max=0.5
+color=transparent
+
+[interval]
+min=0
+max=20000
+
+[RwAcc]
+color=green
+
+[RwEst]
+color=blue
+
+[accErr]
+#color=red
+min=-0.3
+max=0.3
+
+[accWeight]
+color=brown
+min=-0.05
+max=0.05
+
