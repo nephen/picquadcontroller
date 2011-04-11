@@ -114,7 +114,7 @@ unsigned char collect_check_uniqness(unsigned char n){
 //Calibrate acc offset and sensibility
 //User is asked to rotate device in <POSITION_COUNT> different positions and hold device still untill beep is heard
 //Uppon <POSITION_COUNT> successful calls to collect_still_samples() calculations are made 
-#define CALIBRATE_ACC_DEBUG `
+#define CALIBRATE_ACC_DEBUG 
 void calibrate_acc(){
 	unsigned char i,w;
 

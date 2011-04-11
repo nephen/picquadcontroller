@@ -87,9 +87,9 @@ void config_default(){
 	config.accInv[1] = 0;
 	config.accInv[2] = 0;
 
-	config.gyroInv[0] = 0;
-	config.gyroInv[1] = 1;
-	config.gyroInv[2] = 1;
+	config.gyroInv[0] = 1;
+	config.gyroInv[1] = 0;
+	config.gyroInv[2] = 0;
 
 
 }
