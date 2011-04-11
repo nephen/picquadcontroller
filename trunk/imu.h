@@ -172,10 +172,10 @@ void imu_update(){
 	//---------------
 	//dcmGyro
 	//---------------
-	float w[3];								//gyro rates (angular velocity vector)
-	w[0] = getGyroOutput(1);				//rotation rate about accelerometer's X axis (GY output) in rad/ms
-	w[1] = getGyroOutput(0);				//rotation rate about accelerometer's Y axis (GX output) in rad/ms
-	w[2] = getGyroOutput(2);				//rotation rate about accelerometer's Z axis (GZ output) in rad/ms
+	float w[3];					//gyro rates (angular velocity of a global vector in local coordinates)
+	w[0] = -getGyroOutput(1);	//rotation rate about accelerometer's X axis (GY output) in rad/ms
+	w[1] = -getGyroOutput(0);	//rotation rate about accelerometer's Y axis (GX output) in rad/ms
+	w[2] = -getGyroOutput(2);	//rotation rate about accelerometer's Z axis (GZ output) in rad/ms
 	for(i=0;i<3;i++){
 		w[i] *= interval_ms;				//scale by elapsed time to get angle in radians
 		//compute weighted average with the accelerometer correction vector
