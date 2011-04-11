@@ -1,7 +1,7 @@
 [HEADER]
 magic_cookie={66E99B07-E706-4689-9E80-9B2582898A13}
 file_version=1.0
-device=dsPIC33FJ128MC802
+device=dsPIC33FJ128MC804
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
@@ -35,6 +35,10 @@ file_007=Microchip
 file_008=.
 file_009=.
 file_010=.
+file_011=.
+file_012=.
+file_013=.
+file_014=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -47,6 +51,10 @@ file_007=no
 file_008=no
 file_009=no
 file_010=no
+file_011=no
+file_012=no
+file_013=no
+file_014=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -59,6 +67,10 @@ file_007=no
 file_008=no
 file_009=no
 file_010=no
+file_011=no
+file_012=no
+file_013=no
+file_014=no
 [FILE_INFO]
 file_000=main.c
 file_001=macroutil.h
@@ -71,13 +83,17 @@ file_007=c:\program files (x86)\microchip\mplab c30\support\generic\h\libpic30.h
 file_008=imu.h
 file_009=led.h
 file_010=control.h
+file_011=calibrate.h
+file_012=matrix.h
+file_013=config.h
+file_014=vector3d.h
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=
 [TOOL_SETTINGS]
 TS{7D9C6ECE-785D-44CB-BA22-17BF2E119622}=-g
 TS{25AC22BD-2378-4FDB-BFB6-7345A15512D3}=-g -Wall
-TS{7DAC9A1D-4C45-45D6-B25A-D117C74E8F5A}=--heap=128 -Map="$(BINDIR_)$(TARGETBASE).map" --report-mem -o"$(BINDIR_)$(TARGETBASE).$(TARGETSUFFIX)"
+TS{7DAC9A1D-4C45-45D6-B25A-D117C74E8F5A}=--heap=1024 -Map="$(BINDIR_)$(TARGETBASE).map" --report-mem -o"$(BINDIR_)$(TARGETBASE).$(TARGETSUFFIX)"
 TS{509E5861-1E2A-483B-8B6B-CA8DB7F2DD78}=
 [INSTRUMENTED_TRACE]
 enable=0

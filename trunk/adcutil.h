@@ -11,13 +11,14 @@ double adc_to_mv(double adc){
 	return adc * ADC_VREF_MV / 1023.0f;
 }
 
+#define BATTERY_VOLTS (adc_to_mv(adcAvg[6]) * 11.0 / 1000.0)	//Battery input uses a voltage divider of  11  (33K + 3.3K resistors)
 
 //DMA Buffer is splited in segments each segments contains sample from one the channels , AN0..AN6
 //[AN0 SAMPLE 1,AN0 SAMPLE 2, ... ] ,  [AN1 SAMPLE 1,AN1 SAMPLE 2, ... ] , ...
 
-#define DMA_SEG_COUNT 6		//Number of segments in DMA buffer (one for each channel)
+#define DMA_SEG_COUNT 7		//Number of segments in DMA buffer (one for each channel)
 #define DMA_SEG_LEN	  16	//Lenght of each segments in words (number of samples per channel, stored in DMA buffer at one time)
-#define DMA_TOTAL_LEN (DMA_SEG_COUNT*DMA_SEG_LEN)	//=96 Total length of DMA buffer
+#define DMA_TOTAL_LEN (DMA_SEG_COUNT*DMA_SEG_LEN)	//=112 Total length of DMA buffer
 
 unsigned int adcDmaA[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),aligned(256)));	//IMPORTANT: align data to a power of 2 >= DMA_TOTAL_LEN*2 
 unsigned int adcDmaB[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),aligned(256)));	//see http://ww1.microchip.com/downloads/en/DeviceDoc/70182b.pdf, page 22-31
@@ -31,15 +32,13 @@ unsigned int adcDmaB[DMA_SEG_COUNT][DMA_SEG_LEN] __attribute__((space(dma),align
 unsigned long adc_new_data();
 
 void adc_init(){
-	TRISAbits.TRISA0 = 1;	//Configure analog ports as inputs
-	TRISAbits.TRISA1 = 1;	//
-	TRISAbits.TRISA2 = 1;	//
-	TRISBbits.TRISB1 = 1;	//
-	TRISBbits.TRISB2 = 1;	//
-	TRISBbits.TRISB3 = 1;	//
+	//ADC MANUAL: http://ww1.microchip.com/downloads/en/DeviceDoc/70183C.pdf
 
-	AD1PCFGL = 0b1111111111000000;	//Configure ports  AN0..AN6 as analog, all others as digital (on POR all ports are analog by default)
-	AD1CSSL =  0b00111111;	//set inputs to be scanned AN0..AN6
+
+
+	AD1PCFGL = 0b1111111110000000;	//Configure ports  AN0..AN6 as analog, all others as digital (on POR all ports are analog by default)
+	AD1CSSL =  0b0000000001111111;	//set inputs to be scanned AN0..AN6
+
 
 	AD1CON1 = 0;			//defaults (see datasheet)
 	AD1CON1bits.SSRC =0b111;//Auto Convert
@@ -58,9 +57,9 @@ void adc_init(){
 	AD1CON3bits.SAMC = SAMC_PARAM;	//sample time =  SAMC<4:0> * Tad  =  30 * 1.5uS = 45 uS  
 									//Total sample+conversion time per chanel = 12(conversion) + 30(sample) = 42Tad * 1.5us = 63uS 
 
-	#define DMA_INTERVAL_US  (63 * DMA_TOTAL_LEN) 	// = 63 * 96 = 6048 us , this should be integer, otherwise use conversion to integer
+	#define DMA_INTERVAL_US  (63 * DMA_TOTAL_LEN) 	// = 63 * 112 = 7056 us , this should be integer, otherwise use conversion to integer
 
-	#if ADCS_PARAM != 60 -1 || SAMC_PARAM != 30 || DMA_SEG_COUNT != 6 || DMA_SEG_LEN !=16
+	#if ADCS_PARAM != 60 -1 || SAMC_PARAM != 30 || DMA_SEG_COUNT != 7 || DMA_SEG_LEN !=16
 		#error "Update DMA_INTERVAL_US above"
 	#endif
 
@@ -74,6 +73,7 @@ void adc_init(){
 
 	AD1CHS0 = 0;	 		//defaults (see datasheet)
 	AD1CHS123= 0;			//defaults (see datasheet)
+
 
 
 	//Setup DMA buffer for ADC
@@ -91,11 +91,12 @@ void adc_init(){
 
 	IFS0bits.DMA0IF = 0;	//Clear the DMA interrupt flag bit
 	IEC0bits.DMA0IE = 1;	//Set the DMA interrupt enable bit
-	DMA0CONbits.CHEN=1; 	// Enable DMA
-
+	DMA0CONbits.CHEN=1; 	//Enable DMA
+	
 	
 	AD1CON1bits.ADON = 1;	//Enable ADC 
-	
+
+
 	while(! adc_new_data());//wait for first set of data
 
 }

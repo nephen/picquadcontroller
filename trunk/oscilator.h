@@ -34,11 +34,11 @@ _FWDT(FWDTEN_OFF);		// Watchdog Timer Enabled/disabled by user software
 
 
 void oscilator_init(){
-	// Configure Oscillator to operate the device at 80Mhz, 20 Mhz Crystal
-	// Fosc= Fin * M/(N1*N2), Fcy=Fosc/2
+	// Configure Oscillator to operate the device at 80Mhz, 12 Mhz Crystal
+	// Fosc= Fin * M/(N1*N2) = 12 * 40 / (3 * 2) = 80Mhz   , Fcy=Fosc/2 = 80 Mhz / 2 = 40 Mhz
 	PLLFBD=40-2;				// M=PLLDIV+2
 	CLKDIVbits.PLLPOST=0;		// N1=2/4/8  PLLPOST=0/1/3
-	CLKDIVbits.PLLPRE=5-2;		// N2=PLLPRE+2 
+	CLKDIVbits.PLLPRE=3-2;		// N2=PLLPRE+2 
 
 	// Disable Watch Dog Timer
 	RCONbits.SWDTEN=0;
