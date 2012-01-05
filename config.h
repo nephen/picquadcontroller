@@ -67,7 +67,7 @@ void config_default(){
 	// Gyro Zero Level 1.23V @ 0 deg/s =  1023 * 1.23 / 3.3 = 381.3 ADC
 	// 1 mV / (deg/s) = 1023/3300 ADC / ( (PI/180)rad / 1000ms  ) = 17761.69165 ADC /(rad/ms)
 	// Gyro Sensitivity 2 mV/(deg/s) = 2 * 17761.69165 ADC /(rad/ms) = 35523.3833 ADC /(rad/ms)
-	// 
+	// Gyro Resolution 1ADC <=> 0.000028 rad/ms
 	
 	config.gyroOffs[0] = 383.15;		
 	config.gyroOffs[1] = 385.57;		
@@ -80,6 +80,7 @@ void config_default(){
 	// Gyro for Z axis (YAW)  
 	// Gyro Zero Level 1.65V @ 0 deg/s = 1023 * 1.65/3.3 = 511.5 ADC
 	// Gyro Sensitivity 3.3 mV/(deg/s) =  3.3* 17761.69165 ADC /(rad/ms) = 58613.58245 ADC /(rad/ms)
+	// Gyro Resolution 1ADC <=> 0.000017 rad/ms
 	config.gyroOffs[2] = 516.38;
 	config.gyroSens[2] = 58613.58245;
 

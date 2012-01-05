@@ -18,13 +18,16 @@
 // STATUS (COMBINATION OF LED AND SOUND STATES)
 //---------------------------------------------------------------------
 #define STATUS_NORMAL			STATUS(_ON,_OFF, _OFF)					//normal operation
+//Notification status
 #define STATUS_INIT				STATUS(BLINK_SLOW,_OFF, _OFF)			//initializing / calibration
 #define STATUS_CALIB_ERR1		STATUS(BLINK_SLOW,_ON, _OFF)			//calibration error: device not still
 #define STATUS_CALIB_ERR2		STATUS(BLINK_SLOW,BLINK_FAST,BLINK_FAST)//calibration error: rotate device to a different unique position
 #define STATUS_ADJUST			STATUS(BLINK_FAST,_OFF, _OFF)			//adjusting settings
+//Panic status
+#define STATUS_PANIC_BATTERY	STATUS(_OFF,BLINK_SLOW, BLINK_SLOW)		//problem: low battery
 #define STATUS_PANIC_SIGNAL		STATUS(_OFF,BLINK_FAST,BLINK_FAST)		//problem: no signal from RC transmitter
 #define STATUS_PANIC_TILT		STATUS(_OFF,_ON, _ON)					//problem: extreme tilt possible crash
-#define STATUS_PANIC_BATTERY	STATUS(_OFF,BLINK_SLOW, BLINK_SLOW)		//problem: low battery
+
 
 
 
@@ -62,7 +65,8 @@ void beep(unsigned int ms,unsigned int pattern){
 }
 
 
-unsigned int count250us; //this is used in IMU module 
+unsigned int count250us; 	//this is used in IMU module 
+
 
 //this interrupt counts timer overflows for each channel
 void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void){

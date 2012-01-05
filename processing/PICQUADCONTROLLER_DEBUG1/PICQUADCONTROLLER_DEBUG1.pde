@@ -5,7 +5,7 @@ void setup() {
   size(500, 500, P3D);
   
   
-  port = new Serial(this,  "COM18", 115200);  //change to your port settings
+  port = new Serial(this,  "COM18",19200 );  //change to your port settings  115200 / 19200
   
 
   noStroke();
