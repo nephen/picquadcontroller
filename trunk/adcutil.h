@@ -83,7 +83,7 @@ void adc_init(){
 	DMA0CONbits.AMODE =0b10;					// Configure DMA for Peripheral indirect addressing mode
 	DMA0CONbits.MODE = 0b10;					// Configure DMA for Continuous, Ping-Pong mode 
 	DMA0PAD = (volatile unsigned int)&ADC1BUF0;	// Point DMA to ADC1BUF0
-	DMA0CNT = DMA_TOTAL_LEN-1; 					// DMA transfer count (6 segments, each with 4 words)
+	DMA0CNT = DMA_TOTAL_LEN-1; 					// DMA transfer count 
 	DMA0REQ =13;								// Select ADC1 as DMA Request source
 
 	DMA0STA = __builtin_dmaoffset(&adcDmaA);

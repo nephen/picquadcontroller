@@ -13,7 +13,7 @@
 #define POSITION_COUNT	12
 #define UNIQUE_POSITION_DISTANCE (ADC_NOISE*10) // factor 10 is chosen randomly but minimum factor should be at least sqrt(3)
 
-#define COLLECT_COUNT	200		// collect time 200 * 7.056ms ~ 1.4s
+#define COLLECT_COUNT	200						// collect time 200 * 7.056ms ~ 1.4s
 
 typedef struct {
 	unsigned int adcMin[6];
@@ -271,8 +271,5 @@ void calibrate_acc(){
 
 
 }
-
-
-
 
 #endif

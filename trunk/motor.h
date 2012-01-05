@@ -41,12 +41,15 @@ void motor_init(){
 	//setup PWM ports
 	//PWM1, MOTORS 0,1,2	
 	PWM1CON1 = 0;				//clear all bits (use defaults)
+
 	PWM1CON1bits.PMOD1 = 0; 	//PWM1Ly,PWM1Hy are in independent running mode
 	PWM1CON1bits.PEN1L = 0; 	//PWM1L1 NORMAL I/O
 	PWM1CON1bits.PEN1H = 1; 	//PWM1H1 PWM OUTPUT
+
 	PWM1CON1bits.PMOD2 = 0; 	//PWM2Ly,PWM2Hy are in independent running mode
 	PWM1CON1bits.PEN2L = 0; 	//PWM1L2 NORMAL I/O
 	PWM1CON1bits.PEN2H = 1; 	//PWM1H2 PWM OUTPUT
+
 	PWM1CON1bits.PMOD3 = 0; 	//PWM3Ly,PWM2Hy are in independent running mode
 	PWM1CON1bits.PEN3L = 0; 	//PWM1L3 NORMAL I/O
 	PWM1CON1bits.PEN3H = 1; 	//PWM1H3 PWM OUTPUT
@@ -81,7 +84,8 @@ void motor_init(){
 	//ENABLE PWM
 	//PWM1, MOTORS 0,1,2
 	P1TMR = 0;
-	P1TCONbits.PTEN = 1;	
+	P1TCONbits.PTEN = 1;
+	
 	//PWM2, MOTOR 3
 	P2TMR = 0;
 	P2TCONbits.PTEN = 1;	

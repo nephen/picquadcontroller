@@ -40,7 +40,7 @@ char cmd[PULSIN_LEN];	//Commands converted and validated by pulsin_process()
 
 //pulsinUs[] are maped to cmd[] according to following map 
 //Please note there's a "mid" zone, where cmd=0 if pulse in range of cmdMap[MID_MIN] .. cmdMap[MID_MAX]
-// Mode 2 Transmitter, CH1 - NORM, CH2 - REV, CH3 - REV, CH4 - REV
+// Mode 2 Transmitter, CH1 - NORM, CH2 - REV, CH3 - REV, CH4 - REV, CH5 - REV , CH6 - REV
 // Tip for getting direction right, on 0 throtle: 
 // When you move right stick left - right motor should turn on
 // When you move right stick right - left motor should turn on
@@ -49,7 +49,7 @@ char cmd[PULSIN_LEN];	//Commands converted and validated by pulsin_process()
 						
 int cmdMap[PULSIN_LEN][7] = {
 	//RANGE_MIN,RANGE_MAX, MID_MIN,MID_MAX, CMD_MIN,CMD_MAX,CMD_MID , MODE 2 6-CH TRANSMITTER
-	{1100,1900,  1475,1525,  100,-100,0},		//CH1 ROL	RIGH STICK HORIZONTAL
+	{1100,1900,  1475,1525,  -100,100,0},		//CH1 ROL	RIGH STICK HORIZONTAL
 	{1100,1900,  1475,1525,  -100,100,0},		//CH2 PTC	RIGH STICK VERTICAL
 	{1100,1900,  1100,1200,  0,100,0},			//CH3 THR	LEFT STICK VERTICAL
 	{1100,1900,  1475,1525,  -100,100,0},		//CH4 YAW	LEFT STICK HORIZONTAL

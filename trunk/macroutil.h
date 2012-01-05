@@ -27,6 +27,15 @@ double squared(float x){
   return x*x;
 }
 
+
+double atan2deg(float y, float x){
+	if(fabs(y) < 0.1 && fabs(x) < 0.1) 
+		return 0.0; //avoid atan2 returning meaningless numbers
+	else
+		return atan2(y,x)*180.0 / PI;
+}
+
+
 float put_in_range(float v, float vmin, float vmax){
 	return MAX(vmin,MIN(vmax,v));
 }
